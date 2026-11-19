@@ -1,0 +1,6 @@
+node_modules/
+_备份/
+.DS_Store
+*.tgz
+*.log
+npm-debug.log*
