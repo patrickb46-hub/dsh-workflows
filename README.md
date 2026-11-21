@@ -8,6 +8,13 @@ Switching one preset switches all five.
 
 Requires DSH `0.2.1-rc.1` or newer. MIT. The UI strings are Chinese only.
 
+## Promo / 宣传片
+
+[![dsh-workflows promo](docs/promo-cover.png)](docs/promo.mp4)
+
+20 seconds, no voice-over: five settings in five places → one preset switch → seven built-in presets.
+20 秒，无旁白：五处设置 → 一次切换 → 七个内置预设。
+
 ## What one preset controls
 
 | Field | Effect |
