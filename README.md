@@ -12,8 +12,8 @@ Requires DSH `0.2.1-rc.1` or newer. MIT. The UI strings are Chinese only.
 
 [![dsh-workflows promo](docs/promo-cover.png)](docs/promo.mp4)
 
-20 seconds, no voice-over: five settings in five places → one preset switch → seven built-in presets.
-20 秒，无旁白：五处设置 → 一次切换 → 七个内置预设。
+24 seconds, no voice-over: five settings in five places → one preset switch → token saving (compact / hidden) → seven built-in presets.
+24 秒，无旁白：五处设置 → 一次切换 → 省 token（compact / hidden）→ 七个内置预设。
 
 ## What one preset controls
 
