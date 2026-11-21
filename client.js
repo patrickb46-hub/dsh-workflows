@@ -99,17 +99,64 @@ window.__ModuleLoader__.load({
     }
 
     /* ---------------------------------------------------------------- data */
+    function diag(key, value) {
+      try {
+        localStorage.setItem(`dsh.workflows.diag.${key}`, JSON.stringify(value))
+      } catch {
+        /* diagnostics are best effort */
+      }
+    }
+    let formCache = null
+    function configFormsService() {
+      const injected = pluginCtx?.configForms
+      if (injected !== undefined) return injected
+      try {
+        return pluginCtx?.get?.('configForms')
+      } catch {
+        return undefined
+      }
+    }
+    // The settings service registers after this plugin applies, so every lookup
+    // retries instead of caching the first (empty) answer.
+    function formFor() {
+      if (formCache !== null) return formCache
+      const forms = configFormsService()
+      if (forms === undefined) return null
+      try {
+        formCache = forms.get(ENTRY)
+      } catch {
+        return null
+      }
+      return formCache
+    }
     function useForm() {
       const [snapshot, setSnapshot] = React.useState({ status: 'idle' })
       React.useEffect(() => {
-        const forms = pluginCtx?.get('configForms')
-        if (forms === undefined) {
-          setSnapshot({ status: 'no-configForms' })
-          return undefined
+        let alive = true
+        let timer
+        let off
+        const attach = () => {
+          if (!alive) return
+          const form = formFor()
+          if (form === null) {
+            diag('form', { status: 'no-configForms', ts: Date.now() })
+            timer = setTimeout(attach, 500)
+            return
+          }
+          const read = () => {
+            const next = form.getSnapshot()
+            diag('form', { status: next.status, writable: next.writable, revision: next.revision, ts: Date.now() })
+            if (alive) setSnapshot(next)
+          }
+          off = form.subscribe(read)
+          read()
         }
-        const form = forms.get(ENTRY)
-        setSnapshot(form.getSnapshot())
-        return form.subscribe(() => setSnapshot(form.getSnapshot()))
+        attach()
+        return () => {
+          alive = false
+          clearTimeout(timer)
+          if (typeof off === 'function') off()
+        }
       }, [])
       return snapshot
     }
@@ -148,8 +195,30 @@ window.__ModuleLoader__.load({
       return parsePolicyText(text)
     }
 
-    async function writePolicy(form, nextPolicy) {
-      return await form.set('policy', JSON.stringify(nextPolicy))
+    async function writePolicy(target, nextPolicy) {
+      // Callers pass the form snapshot; the writable controller is the only
+      // object with `set`. Resolving here keeps every save path working.
+      const form = target !== null && typeof target?.set === 'function' ? target : formFor()
+      if (form === null || form === undefined) {
+        diag('write', { ok: false, error: 'form unavailable', ts: Date.now() })
+        return false
+      }
+      const payload = JSON.stringify(nextPolicy)
+      try {
+        let accepted = await form.set('policy', payload)
+        if (accepted !== true) {
+          // Every accepted edit bumps the entry revision, so the very next save
+          // from a page that has not re-derived yet is refused once. The form
+          // reloads its snapshot on failure; retry with that fresh revision.
+          await new Promise((resolve) => setTimeout(resolve, 250))
+          accepted = await form.set('policy', payload)
+        }
+        diag('write', { ok: accepted === true, len: payload.length, ts: Date.now() })
+        return accepted === true
+      } catch (error) {
+        diag('write', { ok: false, error: String(error?.message ?? error), ts: Date.now() })
+        return false
+      }
     }
 
     async function execute(sessionId, line) {
@@ -863,7 +932,7 @@ window.__ModuleLoader__.load({
 
     /* ---------------------------------------------------------------- apply */
     return {
-      inject: ['slots', 'remote', 'remote.commands', 'remote.skills', 'sidebarRight', 'sidebarRightTabs'],
+      inject: ['slots', 'remote', 'remote.commands', 'remote.skills', 'sidebarRight', 'sidebarRightTabs', 'configForms'],
       apply(ctx) {
         pluginCtx = ctx
         const withBoundary = (component) => (props) => h(Boundary, { sessionId: props?.sessionId }, h(component, props))

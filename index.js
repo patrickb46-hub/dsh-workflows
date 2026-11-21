@@ -557,7 +557,8 @@ export function apply(ctx, config) {
     const agent = ctx.agents.get(session.id)
     if (agent !== undefined) installAgent(agent)
   })
-  ctx.on('settings/document-updated', (ns) => {
+  ctx.on('settings/document-updated', (ns, revision) => {
+    dbg(`settings/document-updated ns=${ns} revision=${revision}`)
     if (ns !== ENTRY_ID) return
     const next = readLivePolicy()
     if (JSON.stringify(next) === JSON.stringify(policy)) return
